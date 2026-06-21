@@ -26,6 +26,20 @@ data "aws_iam_policy_document" "sns_backup" {
       identifiers = ["events.amazonaws.com"]
     }
   }
+
+  # CloudWatch アラームの alarm_actions/ok_actions も SNS:Publish する。
+  # これを入れ忘れると、アラームは ALARM に遷移するのに通知だけ権限不足で死ぬ
+  # （アラーム履歴に "CloudWatch Alarms is not authorized to perform: SNS:Publish" が残る）。
+  # 本番では condition で aws:SourceArn を当該アラームARNに絞るとより安全。
+  statement {
+    sid       = "AllowCloudWatchAlarmPublish"
+    actions   = ["SNS:Publish"]
+    resources = [aws_sns_topic.backup.arn]
+    principals {
+      type        = "Service"
+      identifiers = ["cloudwatch.amazonaws.com"]
+    }
+  }
 }
 
 resource "aws_sns_topic_policy" "backup" {
